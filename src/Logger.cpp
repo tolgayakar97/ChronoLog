@@ -62,6 +62,11 @@ std::string Logger::GetLogLevel(const LOG_LEVEL& level) const
 void Logger::Log(const LOG_LEVEL& level, const std::string& text)
 {
     std::lock_guard<std::mutex> lg_(mtx_);
+
+    if (level < config_.logLevel) {
+        return;
+    }
+
     std::string log = GetTimeStamp() + ' ' + GetLogLevel(level) + " : " + text + '\n';
 
     if (config_.enableConsole) {
@@ -101,7 +106,7 @@ void Logger::WriteToConsole(const std::string& log)
 void Logger::OpenLogFile()
 {
     if (!logFile_.is_open()) {
-        logFile_.open(config_.logFile, std::ios::app);
+        logFile_.open(config_.logFile, std::ios::out);
     }
 }
 

@@ -7,6 +7,7 @@ int main()
     config.enableConsole = true;
     config.enableFile = true;
     config.logFile = "log.log";
+    config.logLevel = LOG_LEVEL::INFO;
 
     auto &logger = Logger::GetInstance();
     logger.Configure(config);

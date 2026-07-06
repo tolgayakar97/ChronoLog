@@ -4,15 +4,10 @@
 #include <fstream>
 #include <mutex>
 #include "LogLevel.h"
+#include "LoggerConfig.h"
+
 #define MS 1000
 #define SETW 3
-
-struct LoggerConfig
-{
-    bool enableConsole{false};
-    bool enableFile{false};
-    std::string logFile;
-};
 
 class Logger // Singleton class
 {
