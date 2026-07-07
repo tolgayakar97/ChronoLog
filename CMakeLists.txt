@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(Logger
     src/Logger.cpp
+    src/ConsoleColor.cpp
 )
 
 target_include_directories(Logger

@@ -1,12 +1,15 @@
 #pragma once
 
 #include <iostream>
-#include  "LogLevel.h"
+#include  "LogLevelInfo.h"
 
-struct LoggerConfig
+namespace Logger
 {
-    bool enableConsole{false};
-    bool enableFile{false};
-    std::string logFile;
-    LOG_LEVEL logLevel{LOG_LEVEL::INFO};
-};
+    struct LoggerConfig
+    {
+        bool enableConsole{false};
+        bool enableFile{false};
+        std::string logFile;
+        LogLevelInfo::LOG_LEVEL logLevel{LogLevelInfo::LOG_LEVEL::INFO};
+    };
+}

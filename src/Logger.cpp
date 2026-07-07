@@ -4,126 +4,119 @@
 #include <sstream>
 #include "Logger.h"
 
-Logger::~Logger()
+namespace Logger
 {
-    CloseLogFile();
-}
-
-Logger& Logger::GetInstance()
-{
-    // Meyers Singleton
-    static Logger instance_;
-    return instance_;
-}
-
-void Logger::Configure(const LoggerConfig& config)
-{
-    config_ = config;
-}
-
-std::string Logger::GetTimeStamp() const
-{ 
-    auto time = std::chrono::system_clock::now();
-    auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        time.time_since_epoch()
-    ) % MS;
-
-    auto toTime = std::chrono::system_clock::to_time_t(time);
-    auto timeStamp = std::localtime(&toTime);
-
-    std::ostringstream oss;
-    oss << std::put_time(timeStamp, "%Y-%m-%d %H:%M:%S") << '.' << std::setw(SETW) <<
-        std::setfill('0') << time_ms.count();
-    return oss.str();
-}
-
-std::string Logger::GetLogLevel(const LOG_LEVEL& level) const
-{
-    std::string logLevel;
-
-    switch(level)
+    Logger::~Logger()
     {
-        case LOG_LEVEL::INFO:
-            logLevel = "[INFO]";
-            break;
-        case LOG_LEVEL::DEBUG:
-            logLevel = "[DEBUG]";
-            break;
-        case LOG_LEVEL::WARNING:
-            logLevel = "[WARNING]";
-            break;
-        case LOG_LEVEL::ERROR:
-            logLevel = "[ERROR]";
-            break;
-    }
-    return logLevel;
-}
-
-void Logger::Log(const LOG_LEVEL& level, const std::string& text)
-{
-    std::lock_guard<std::mutex> lg_(mtx_);
-
-    if (level < config_.logLevel) {
-        return;
+        CloseLogFile();
     }
 
-    std::string log = GetTimeStamp() + ' ' + GetLogLevel(level) + " : " + text + '\n';
-
-    if (config_.enableConsole) {
-        WriteToConsole(log);
+    Logger& Logger::GetInstance()
+    {
+        // Meyers Singleton
+        static Logger instance_;
+        return instance_;
     }
 
-    if (config_.enableFile && !config_.logFile.empty()) {
-        WriteToFile(log);
+    void Logger::Configure(const LoggerConfig& config)
+    {
+        config_ = config;
     }
-}
 
-void Logger::InfoLog(const std::string& text)
-{
-    Log(LOG_LEVEL::INFO, text);
-}
+    std::string Logger::GetTimeStamp() const
+    { 
+        auto time = std::chrono::system_clock::now();
+        auto time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            time.time_since_epoch()
+        ) % MS;
 
-void Logger::DebugLog(const std::string& text)
-{
-    Log(LOG_LEVEL::DEBUG, text);
-}
+        auto toTime = std::chrono::system_clock::to_time_t(time);
+        auto timeStamp = std::localtime(&toTime);
 
-void Logger::WarnLog(const std::string& text)
-{
-    Log(LOG_LEVEL::WARNING, text);
-}
-
-void Logger::ErrorLog(const std::string& text)
-{
-    Log(LOG_LEVEL::ERROR, text);
-}
-
-void Logger::WriteToConsole(const std::string& log)
-{
-    std::cout << log;
-}
-
-void Logger::OpenLogFile()
-{
-    if (!logFile_.is_open()) {
-        logFile_.open(config_.logFile, std::ios::out);
+        std::ostringstream oss;
+        oss << std::put_time(timeStamp, "%Y-%m-%d %H:%M:%S") << '.' << std::setw(SETW) <<
+            std::setfill('0') << time_ms.count();
+        return oss.str();
     }
-}
 
-void Logger::CloseLogFile()
-{
-    if (logFile_.is_open()) {
-        logFile_.close();
+    LogLevelInfo::LogLevelInfo Logger::GetLogLevel(const LogLevelInfo::LOG_LEVEL& level) const
+    {
+        // TODO: Return LogLevelInfo as reference to avoid copying, but ensure the lifetime of the returned reference is valid.
+        return LogLevelInfo::infoArray[static_cast<std::size_t>(level)];
     }
-}
 
-void Logger::WriteToFile(const std::string& log)
-{
-    if (logFile_.is_open()) {
-        logFile_ << log;
-    } else {
-        OpenLogFile();
-        logFile_ << log;
+    void Logger::Log(const LogLevelInfo::LOG_LEVEL& level, const std::string& desc)
+    {
+        std::lock_guard<std::mutex> lg_(mtx_);
+
+        if (level < config_.logLevel) {
+            return;
+        }
+
+        auto logLevelInfo = GetLogLevel(level);
+        auto timeStamp = GetTimeStamp();
+
+        if (config_.enableConsole) {
+            WriteToConsole(timeStamp, logLevelInfo, desc);
+        }
+
+        if (config_.enableFile && !config_.logFile.empty()) {
+            WriteToFile(timeStamp, logLevelInfo, desc);
+        }
+    }
+
+    void Logger::InfoLog(const std::string& desc)
+    {
+        Log(LogLevelInfo::LOG_LEVEL::INFO, desc);
+    }
+
+    void Logger::DebugLog(const std::string& desc)
+    {
+        Log(LogLevelInfo::LOG_LEVEL::DEBUG, desc);
+    }
+
+    void Logger::WarnLog(const std::string& desc)
+    {
+        Log(LogLevelInfo::LOG_LEVEL::WARNING, desc);
+    }
+
+    void Logger::ErrorLog(const std::string& desc)
+    {
+        Log(LogLevelInfo::LOG_LEVEL::ERROR, desc);
+    }
+
+    void Logger::OpenLogFile()
+    {
+        if (!logFile_.is_open()) {
+            logFile_.open(config_.logFile, std::ios::out);
+        }
+    }
+
+    void Logger::CloseLogFile()
+    {
+        if (logFile_.is_open()) {
+            logFile_.close();
+        }
+    }
+
+    void Logger::WriteToFile(const std::string& timeStamp, const LogLevelInfo::LogLevelInfo& logLevelInfo,
+            const std::string& desc)
+    {
+        auto log = timeStamp + " " + logLevelInfo.info + " : " + desc + '\n';
+        if (logFile_.is_open()) {
+            logFile_ << log;
+        } else {
+            OpenLogFile();
+            logFile_ << log;
+        }
+    }
+
+    void Logger::WriteToConsole(const std::string& timeStamp, const LogLevelInfo::LogLevelInfo& logLevelInfo,
+            const std::string& desc)
+    {
+        auto log = timeStamp + ' ' + ConsoleColor::SetConsoleColor(logLevelInfo.color) + '[' +
+            logLevelInfo.info + ']' + ConsoleColor::GetDefaultColor() + ": " + desc + '\n';
+        std::cout << log;
     }
 }
 
