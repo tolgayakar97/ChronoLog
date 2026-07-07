@@ -1,6 +1,26 @@
 #include <thread>
 #include "Logger.h"
 
+void MainInfo()
+{
+    Logger::INFO_LOG("Info deneme");
+}
+
+void MainDebug()
+{
+    Logger::DEBUG_LOG("Debug deneme");
+}
+
+void MainWarn()
+{
+    Logger::WARNING_LOG("Warning deneme");
+}
+
+void MainError()
+{
+    Logger::ERROR_LOG("Error deneme");
+}
+
 int main()
 {
     Logger::LoggerConfig config;
@@ -13,16 +33,15 @@ int main()
     logger.Configure(config);
     logger.OpenLogFile();
 
-    auto string1 = "\033[31;1mDeneme\033[0m\n";
-    auto string2 = "Deneme2";
-    std::thread t1(&Logger::Logger::InfoLog, std::ref(logger), "Deneme");
-    std::thread t2(&Logger::Logger::DebugLog, std::ref(logger), "Deneme");
-    std::thread t3(&Logger::Logger::WarnLog, std::ref(logger), "Deneme");
-    std::thread t4(&Logger::Logger::ErrorLog, std::ref(logger), "Deneme");
+    std::thread t1(MainInfo);
+    std::thread t2(MainWarn);
+    std::thread t3(MainDebug);
+    std::thread t4(MainError);
 
     t1.join();
     t2.join();
     t3.join();
     t4.join();
+
     return 0;
 }

@@ -39,50 +39,29 @@ namespace Logger
         return oss.str();
     }
 
-    LogLevelInfo::LogLevelInfo Logger::GetLogLevel(const LogLevelInfo::LOG_LEVEL& level) const
+    LogLevelInfo::LogLevelInfo Logger::GetLogLevelInfo(const LogLevelInfo::LOG_LEVEL& level) const
     {
         // TODO: Return LogLevelInfo as reference to avoid copying, but ensure the lifetime of the returned reference is valid.
         return LogLevelInfo::infoArray[static_cast<std::size_t>(level)];
     }
 
-    void Logger::Log(const LogLevelInfo::LOG_LEVEL& level, const std::string& desc)
+    void Logger::Log(const LogContext& ctx)
     {
         std::lock_guard<std::mutex> lg_(mtx_);
 
-        if (level < config_.logLevel) {
+        if (ctx.level < config_.logLevel) {
             return;
         }
 
-        auto logLevelInfo = GetLogLevel(level);
         auto timeStamp = GetTimeStamp();
 
         if (config_.enableConsole) {
-            WriteToConsole(timeStamp, logLevelInfo, desc);
+            WriteToConsole(timeStamp, ctx);
         }
 
         if (config_.enableFile && !config_.logFile.empty()) {
-            WriteToFile(timeStamp, logLevelInfo, desc);
+            WriteToFile(timeStamp, ctx);
         }
-    }
-
-    void Logger::InfoLog(const std::string& desc)
-    {
-        Log(LogLevelInfo::LOG_LEVEL::INFO, desc);
-    }
-
-    void Logger::DebugLog(const std::string& desc)
-    {
-        Log(LogLevelInfo::LOG_LEVEL::DEBUG, desc);
-    }
-
-    void Logger::WarnLog(const std::string& desc)
-    {
-        Log(LogLevelInfo::LOG_LEVEL::WARNING, desc);
-    }
-
-    void Logger::ErrorLog(const std::string& desc)
-    {
-        Log(LogLevelInfo::LOG_LEVEL::ERROR, desc);
     }
 
     void Logger::OpenLogFile()
@@ -99,24 +78,29 @@ namespace Logger
         }
     }
 
-    void Logger::WriteToFile(const std::string& timeStamp, const LogLevelInfo::LogLevelInfo& logLevelInfo,
-            const std::string& desc)
+    void Logger::WriteToFile(const std::string& timeStamp, const LogContext& ctx)
     {
-        auto log = timeStamp + " " + logLevelInfo.info + " : " + desc + '\n';
+        std::stringstream log;
+        auto logLevelInfo = GetLogLevelInfo(ctx.level);
+        log << timeStamp << " [" << logLevelInfo.info << "] (" << ctx.func << '@' << ctx.file << ':' << ctx.line << ") " << ctx.desc << '\n';
         if (logFile_.is_open()) {
-            logFile_ << log;
+            logFile_ << log.str();
         } else {
             OpenLogFile();
-            logFile_ << log;
+            logFile_ << log.str();
         }
     }
 
-    void Logger::WriteToConsole(const std::string& timeStamp, const LogLevelInfo::LogLevelInfo& logLevelInfo,
-            const std::string& desc)
+    void Logger::WriteToConsole(const std::string& timeStamp, const LogContext& ctx)
     {
-        auto log = timeStamp + ' ' + ConsoleColor::SetConsoleColor(logLevelInfo.color) + '[' +
-            logLevelInfo.info + ']' + ConsoleColor::GetDefaultColor() + ": " + desc + '\n';
-        std::cout << log;
+        auto logLevelInfo = GetLogLevelInfo(ctx.level);
+
+        auto level = ConsoleColor::SetConsoleColor(logLevelInfo.color) + '[' +
+            logLevelInfo.info + ']' + ConsoleColor::GetDefaultColor();
+        
+        std::stringstream log;
+        log << timeStamp << ' ' << level << " (" << ctx.func << '@' << ctx.file << ':' << ctx.line << ") " << ctx.desc << '\n';
+        std::cout << log.str();
     }
 }
 
